@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pipeline-account
+secrets:
+- name: ibm-cr-push-secret
+imagePullSecrets:
+- name: ibm-cr-pull-secret

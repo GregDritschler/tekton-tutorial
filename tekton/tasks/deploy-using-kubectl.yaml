@@ -1,0 +1,31 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: deploy-using-kubectl
+spec:
+  inputs:
+    resources:
+      - name: git-source
+        type: git
+      - name: built-image
+        type: image
+    params:
+      - name: imageTag
+        description: Tag of the images to be used.
+        default: "latest"
+  steps:
+    - name: update-yaml
+      image: alpine
+      command: ["sed"]
+      args:
+        - "-i"
+        - "-e"
+        - "s/__IMAGE__/${inputs.resources.built-image.url}:${inputs.params.imageTag}/g"
+        - "/workspace/git-source/knative/picalc.yaml"
+    - name: run-kubectl
+      image: lachlanevenson/k8s-kubectl
+      command: ["kubectl"]
+      args:
+        - "apply"
+        - "-f"
+        - "/workspace/git-source/knative/picalc.yaml"

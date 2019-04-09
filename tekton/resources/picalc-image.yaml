@@ -1,0 +1,10 @@
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: picalc-image
+spec:
+  type: image
+  params:
+    - name: url
+      description: The target URL
+      value: registry.ng.bluemix.net/gdns3/picalc
