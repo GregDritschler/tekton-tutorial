@@ -26,9 +26,7 @@ In this tutorial you'll learn
 
 Tekton provides a set of extensions to Kubernetes, in the form of [Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) for defining pipelines.
 The following diagram shows the resources used in this tutorial.  The arrows depict references from one resource to another resource.
-
 ![crd](doc/source/images/crd.png)
-
 The resources are used as follows.
 
 * A **PipelineResource** represents an object that is an input (such as a git repository) or output (such as a docker image) of the pipeline.
