@@ -33,7 +33,7 @@ The resources are used as follows.
 
 * A **PipelineResource** defines an object that is an input (such as a git repository) or an output (such as a docker image) of the pipeline.
 * A **PipelineRun** defines an execution of a pipeline.  It references the **Pipeline** to run and the **PipelineResources** to use as inputs and outputs.
-* A **Pipeline** defines the set of *Tasks* that compose a pipeline.
+* A **Pipeline** defines the set of **Tasks** that compose a pipeline.
 * A **Task** defines a set of build steps such as compiling code, running tests, and building and deploying images.
 
 We will go into more detail about each resource during the walkthrough of the example.
@@ -52,9 +52,9 @@ You should clone this project to your workstation since you will need to edit so
 git clone https://github.com/gregdritschler/tekton-tutorial
 ```
 
-We will work from the bottom-up, i.e. first we will define the *Task* resources needed to build and deploy the image,
-then we'll define the *Pipeline* resource that references the tasks,
-and finally we'll create the *PipelineRun* and *PipelineResource* resources needed to run the pipeline.
+We will work from the bottom-up, i.e. first we will define the Task resources needed to build and deploy the image,
+then we'll define the Pipeline resource that references the tasks,
+and finally we'll create the PipelineRun and PipelineResource resources needed to run the pipeline.
 
 
 ### Create a task to build an image and push it to a container registry
