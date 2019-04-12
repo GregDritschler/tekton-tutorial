@@ -8,6 +8,5 @@ spec:
     configuration:
       revisionTemplate:
         spec:
-          serviceAccountName: pipeline-account
           container:
             image: __IMAGE__

@@ -8,12 +8,12 @@ spec:
       - name: git-source
         type: git
     params:
-      - name: pathToDockerFile
-        description: The path to the dockerfile to build (relative to the context)
-        default: Dockerfile
       - name: pathToContext
         description: The path to the build context, used by Kaniko - within the workspace
         default: .
+      - name: pathToDockerFile
+        description: The path to the dockerfile to build (relative to the context)
+        default: Dockerfile
       - name: imageTag
         description: Tag to apply to the built image
         default: "latest"
@@ -28,6 +28,5 @@ spec:
         - /kaniko/executor
       args:
         - --dockerfile=${inputs.params.pathToDockerFile}
-        - --reproducible
         - --destination=${outputs.resources.built-image.url}:${inputs.params.imageTag}
         - --context=/workspace/git-source/${inputs.params.pathToContext}

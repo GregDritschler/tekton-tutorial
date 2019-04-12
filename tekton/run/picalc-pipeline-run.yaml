@@ -5,12 +5,6 @@ metadata:
 spec:
   pipelineRef:
     name: build-and-deploy-pipeline
-  params:
-    - name: imageTag
-      value: v1
-  trigger:
-    type: manual
-  serviceAccount: pipeline-account
   resources:
     - name: git-source
       resourceRef:
@@ -18,3 +12,11 @@ spec:
     - name: built-image
       resourceRef:
         name: picalc-image
+  params:
+    - name: pathToYamlFile
+      value: "knative/picalc.yaml"
+    - name: imageTag
+      value: "1.0"
+  trigger:
+    type: manual
+  serviceAccount: pipeline-account
