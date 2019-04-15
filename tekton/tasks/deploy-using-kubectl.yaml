@@ -7,11 +7,12 @@ spec:
     resources:
       - name: git-source
         type: git
-      - name: built-image
-        type: image
     params:
       - name: pathToYamlFile
         description: The path to the yaml file to deploy within the git source
+      - name: imageUrl
+        description: Url of image repository
+        default: "latest"
       - name: imageTag
         description: Tag of the images to be used.
         default: "latest"
@@ -22,7 +23,7 @@ spec:
       args:
         - "-i"
         - "-e"
-        - "s;__IMAGE__;${inputs.resources.built-image.url}:${inputs.params.imageTag};g"
+        - "s;__IMAGE__;${inputs.params.imageUrl}:${inputs.params.imageTag};g"
         - "/workspace/git-source/${inputs.params.pathToYamlFile}"
     - name: run-kubectl
       image: lachlanevenson/k8s-kubectl

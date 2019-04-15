@@ -6,14 +6,14 @@ spec:
   resources:
     - name: git-source
       type: git
-    - name: built-image
-      type: image
   params:
     - name: pathToContext
       description: The path to the build context, used by Kaniko - within the workspace
       default: src
     - name: pathToYamlFile
       description: The path to the yaml file to deploy within the git source
+    - name: imageUrl
+      description: Url of image repository
     - name: imageTag
       description: Tag to apply to the built image
   tasks:
@@ -23,28 +23,27 @@ spec:
     params:
       - name: pathToContext
         value: "${params.pathToContext}"
+      - name: imageUrl
+        value: "${params.imageUrl}"
       - name: imageTag
         value: "${params.imageTag}"
     resources:
       inputs:
         - name: git-source
           resource: git-source
-      outputs:
-        - name: built-image
-          resource: built-image
   - name: deploy-to-cluster
     taskRef:
       name: deploy-using-kubectl
+    runAfter:
+      - source-to-image
     params:
       - name: pathToYamlFile
         value:  "${params.pathToYamlFile}"
+      - name: imageUrl
+        value: "${params.imageUrl}"
       - name: imageTag
         value: "${params.imageTag}"
     resources:
       inputs:
         - name: git-source
           resource: git-source
-        - name: built-image
-          resource: built-image
-          from:
-            - source-to-image
