@@ -313,7 +313,7 @@ We will define it in a moment.
 * A service account named `pipeline-account` is specified to provide the credentials needed for the pipeline to run successfully.
 We will define this service account in the next part of the tutorial.
 
-You must edit this file to substitute the values of <REGISTRY> and <NAMESPACE> with the information for your private container registry.
+You must edit this file to substitute the values of `<REGISTRY>` and `<NAMESPACE>` with the information for your private container registry.
 
 * To find the value for `<REGISTRY>`, enter the command `ibmcloud cr region`.
 * To find the value of `<NAMESPACE>`, enter the command `ibmcloud cr namespace-list`.
