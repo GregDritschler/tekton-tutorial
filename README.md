@@ -28,7 +28,7 @@ Before you start the tutorial you must set up a Kubernetes environment with Knat
 
 ## Tekton pipeline concepts
 
-Tekton provides a set of extensions to Kubernetes, in the form of [Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) for defining pipelines.
+Tekton provides a set of extensions to Kubernetes, in the form of [Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/), for defining pipelines.
 The following diagram shows the resources used in this tutorial.  The arrows depict references from one resource to another resource.
 
 ![crd](doc/source/images/crd.png)
@@ -53,7 +53,7 @@ Let's create a simple pipeline that
 You should clone this project to your workstation since you will need to edit some of the yaml files before applying them to your cluster.
 
 ```
-git clone https://github.com/gregdritschler/tekton-tutorial
+git clone https://github.com/IBM/tekton-tutorial
 ```
 
 We will work from the bottom-up, i.e. first we will define the Task resources needed to build and deploy the image,
@@ -104,12 +104,12 @@ A task can have one or more steps.  Each step defines an image to run to perform
 This task has one step that uses the [kaniko](https://github.com/GoogleContainerTools/kaniko) project to build a docker image from source and push it to a registry.
 
 The task requires an input resource of type `git-source` that defines where the source is located.
-Note that the resources are simply abstract arguments to the task.
+Note that a resource is simply an abstract argument to the task.
 We'll see later how it becomes bound to a PipelineResources which defines the actual resource to be used.
 This makes the task reusable with different git repositories.
 
 A task also can have input parameters.  Parameters help to make a Task more reusable.
-This task accepts three optional parameters:
+This task accepts the following parameters:
 * a path to the Docker build context inside the git source
 * a path to the Dockerfile inside the build context
 * the URL of the image repository where the image should be stored
@@ -250,12 +250,12 @@ default inside the task (if it's an optional parameter).  For example this pipel
 source-to-image task but does not expose the `pathToDockerFile` parameter and allows it to default inside the task.
 
 Dependencies between tasks can be expressed by using the `runAfter` key.
-The value specifies one or more tasks which must run before the task.
-In this example, the pipeline specifies that the `deploy-using-kubectl` task must run after the `source-to-image` task.
+It specifies that the task must run after the given list of one of tasks has completed.
+In this example, this pipeline specifies that the `deploy-using-kubectl` task must run after the `source-to-image` task.
 Tekton will order to the execution of the tasks to satisfy this dependency.
 
 Dependencies between tasks also can be expressed by using the `from` key which isn't used in this tutorial
-but which you can [read about in the official Tekton documentation]((https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md#from).
+but which you can [read about in the official Tekton documentation](https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md#from).
 
 Apply the file to your cluster to create the pipeline.
 
