@@ -267,10 +267,10 @@ kubectl apply -f tekton/pipeline/build-and-deploy-pipeline.yaml
 ## Create PipelineRun and PipelineResources
 
 We've defined reusable Pipeline and Task resources for building and deploying an image.
-It is now time to look at how one runs the pipeline with an actual set of input and output resources.
+It is now time to look at how one runs the pipeline with an actual input resource and parameters.
 
 Below is a Tekton PipelineRun resource that runs the pipeline we defined above.
-You can find this yaml file at [tekton/run/picalc-pipeline-run.yaml](tekton/pipeline/picalc-pipeline-run.yaml).
+You can find this yaml file at [tekton/run/picalc-pipeline-run.yaml](tekton/run/picalc-pipeline-run.yaml).
 
 ```
 apiVersion: tekton.dev/v1alpha1
