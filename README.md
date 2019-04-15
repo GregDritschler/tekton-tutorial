@@ -479,7 +479,7 @@ Spec:
     Name:   pathToYamlFile
     Value:  knative/picalc.yaml
     Name:   imageUrl
-    Value:  registry.ng.bluemix.net/gdns3/picalc
+    Value:  registry.ng.bluemix.net/mynamespace/picalc
     Name:   imageTag
     Value:  1.3
   Pipeline Ref:
@@ -529,7 +529,7 @@ Events:                    <none>
 ```
 
 Note the status message which says `Not all Tasks in the Pipeline have finished executing`.
-Continue to rerun the command to check the status.  If the pipeline runs successfully, the overall status should look like this:
+Continue to rerun the command to check the status.  If the pipeline runs successfully, the overall status eventually should look like this:
 
 ```
 Status:
@@ -571,6 +571,7 @@ Status:
 ```
 
 Under the task run status you should find a message that tells you how to get the logs from the failed build step.
+You will need to look at the logs to identify the problem.
 
 ```
 build step "build-step-deploy-using-kubectl" exited with code 1 (image: "docker.io/library/alpine@sha256:28ef97b8686a0b5399129e9b763d5b7e5ff03576aa5580d6f4182a49c5fe1913"); for logs run: kubectl -n default logs picalc-pr-db6p6-deploy-to-cluster-7h8pm-pod-582c73 -c build-step-deploy-using-kubectl
