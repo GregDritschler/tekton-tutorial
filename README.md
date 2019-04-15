@@ -315,8 +315,8 @@ We will define this service account in the next part of the tutorial.
 
 You must edit this file to substitute the values of <REGISTRY> and <NAMESPACE> with the information for your private container registry.
 
-* To find the value for <REGISTRY>, enter the command `ibmcloud cr region`.
-* To find the value of <NAMESPACE>, enter the command `ibmcloud cr namespace-list`.
+* To find the value for `<REGISTRY>`, enter the command `ibmcloud cr region`.
+* To find the value of `<NAMESPACE>`, enter the command `ibmcloud cr namespace-list`.
 
 Below is the Tekton PipelineResource for `picalc-git` which defines the git source.
 You can find this yaml file at [tekton/resources/picalc-git.yaml](tekton/resources/picalc-git.yaml).
