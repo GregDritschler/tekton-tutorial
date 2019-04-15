@@ -13,13 +13,17 @@ In this tutorial you'll learn
 
 ## Prerequisites
 
-* Create a standard Kubernetes cluster in IBM Kubernetes Service
+Before you start the tutorial you must set up a Kubernetes environment with Knative and Tekton installed.
 
-* Create a private container registry in IBM Container Service
+* [Install the CLIs to manage a cluster](https://cloud.ibm.com/docs/containers?topic=containers-cs_cli_install#cs_cli_install_steps)
 
-* Install Knative in your cluster
+* [Create a standard Kubernetes cluster in IBM Kubernetes Service](https://cloud.ibm.com/docs/containers?topic=containers-clusters#clusters_ui_standard)
 
-* Install Tekton in your cluster by following the instructions [here](https://cloud.google.com/tekton/)
+* [Create a private container registry in IBM Container Service](https://cloud.ibm.com/docs/services/Registry?topic=registry-registry_setup_cli_namespace#registry_setup_cli_namespace)
+
+* [Install Knative in your cluster](https://cloud.ibm.com/docs/containers?topic=containers-knative_tutorial#knative_setup)
+
+* [Install Tekton in your cluster by following the instructions](https://github.com/tektoncd/pipeline/blob/master/docs/install.md#adding-the-tekton-pipelines)
 
 
 ## Tekton pipeline concepts
@@ -79,13 +83,12 @@ spec:
       - name: pathToDockerFile
         description: The path to the dockerfile to build (relative to the context)
         default: Dockerfile
+      - name: imageUrl
+        description: Url of image repository
+        default: "latest"
       - name: imageTag
         description: Tag to apply to the built image
         default: "latest"
-  outputs:
-    resources:
-      - name: built-image
-        type: image
   steps:
     - name: build-and-push
       image: gcr.io/kaniko-project/executor
@@ -93,28 +96,26 @@ spec:
         - /kaniko/executor
       args:
         - --dockerfile=${inputs.params.pathToDockerFile}
-        - --destination=${outputs.resources.built-image.url}:${inputs.params.imageTag}
+        - --destination=${inputs.params.imageUrl}:${inputs.params.imageTag}
         - --context=/workspace/git-source/${inputs.params.pathToContext}
 ```
 
 A task can have one or more steps.  Each step defines an image to run to perform the function of the step.
 This task has one step that uses the [kaniko](https://github.com/GoogleContainerTools/kaniko) project to build a docker image from source and push it to a registry.
 
-The task requires two resources:
-* An input resource of type `git-source` that defines where the source is located
-* An output resource of type `image` that defines the registry to which the image is pushed
-
+The task requires an input resource of type `git-source` that defines where the source is located.
 Note that the resources are simply abstract arguments to the task.
-We'll see later how they become bound to PipelineResources which define the actual resource to be used.
-This makes the task reusable with different git repositories and image registries.
+We'll see later how it becomes bound to a PipelineResources which defines the actual resource to be used.
+This makes the task reusable with different git repositories.
 
 A task also can have input parameters.  Parameters help to make a Task more reusable.
 This task accepts three optional parameters:
 * a path to the Docker build context inside the git source
 * a path to the Dockerfile inside the build context
+* the URL of the image repository where the image should be stored
 * an image tag to apply to the built image
 
-You may be wondering about how the task authenticates to the image registry for permission to push the image.
+You may be wondering about how the task authenticates to the image repository for permission to push the image.
 This will be covered later on in the tutorial.
 
 Apply the file to your cluster to create the task.
@@ -139,11 +140,12 @@ spec:
     resources:
       - name: git-source
         type: git
-      - name: built-image
-        type: image
     params:
       - name: pathToYamlFile
         description: The path to the yaml file to deploy within the git source
+      - name: imageUrl
+        description: Url of image repository
+        default: "latest"
       - name: imageTag
         description: Tag of the images to be used.
         default: "latest"
@@ -154,7 +156,7 @@ spec:
       args:
         - "-i"
         - "-e"
-        - "s;__IMAGE__;${inputs.resources.built-image.url}:${inputs.params.imageTag};g"
+        - "s;__IMAGE__;${inputs.params.imageUrl}:${inputs.params.imageTag};g"
         - "/workspace/git-source/${inputs.params.pathToYamlFile}"
     - name: run-kubectl
       image: lachlanevenson/k8s-kubectl
@@ -172,7 +174,7 @@ The step requires the yaml file to have a character string `__IMAGE__` at the po
 
 2. The second step runs `kubectl` using Lachlan Evenson's popular `k8s-kubectl` container image to apply the yaml file to the same cluster where the pipeline is running.
 
-As was the case in the source-to-image task, this task makes use of input PipelineResources and parameters in order to make the task as reusable as possible.
+As was the case in the source-to-image task, this task makes use of an input PipelineResource and parameters in order to make the task as reusable as possible.
 
 You may be wondering about how the task authenticates to the cluster for permission to apply the resource(s) in the yaml file.
 This will be covered later on in the tutorial.
@@ -198,14 +200,14 @@ spec:
   resources:
     - name: git-source
       type: git
-    - name: built-image
-      type: image
   params:
     - name: pathToContext
       description: The path to the build context, used by Kaniko - within the workspace
       default: src
     - name: pathToYamlFile
       description: The path to the yaml file to deploy within the git source
+    - name: imageUrl
+      description: Url of image repository
     - name: imageTag
       description: Tag to apply to the built image
   tasks:
@@ -215,31 +217,30 @@ spec:
     params:
       - name: pathToContext
         value: "${params.pathToContext}"
+      - name: imageUrl
+        value: "${params.imageUrl}"
       - name: imageTag
         value: "${params.imageTag}"
     resources:
       inputs:
         - name: git-source
           resource: git-source
-      outputs:
-        - name: built-image
-          resource: built-image
   - name: deploy-to-cluster
     taskRef:
       name: deploy-using-kubectl
+    runAfter:
+      - source-to-image
     params:
       - name: pathToYamlFile
         value:  "${params.pathToYamlFile}"
+      - name: imageUrl
+        value: "${params.imageUrl}"
       - name: imageTag
         value: "${params.imageTag}"
     resources:
       inputs:
         - name: git-source
           resource: git-source
-        - name: built-image
-          resource: built-image
-          from:
-            - source-to-image
 ```
 
 A Pipeline resource lists the tasks to run and provides the input and output resources and input parameters required by each task.
@@ -248,13 +249,13 @@ However you can choose whether to expose a task's input parameter as a pipeline 
 default inside the task (if it's an optional parameter).  For example this pipeline exposes the `pathToContext` parameter from the
 source-to-image task but does not expose the `pathToDockerFile` parameter and allows it to default inside the task.
 
-Dependencies between tasks can be expressed by using the `from` key with an input resource.
-The value specifies one or more tasks which output the resource and must run first.
-In this example, the pipeline specifies that the `built-image` resource used in the `deploy-using-kubectl` task comes `from` the `source-to-image` task.
+Dependencies between tasks can be expressed by using the `runAfter` key.
+The value specifies one or more tasks which must run before the task.
+In this example, the pipeline specifies that the `deploy-using-kubectl` task must run after the `source-to-image` task.
 Tekton will order to the execution of the tasks to satisfy this dependency.
 
-Dependencies between tasks also can be expressed by using the `runAfter` key which isn't used in this tutorial
-but which you can [read about in the official Tekton documentation]((https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md#runafter).
+Dependencies between tasks also can be expressed by using the `from` key which isn't used in this tutorial
+but which you can [read about in the official Tekton documentation]((https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md#from).
 
 Apply the file to your cluster to create the pipeline.
 
@@ -283,12 +284,11 @@ spec:
     - name: git-source
       resourceRef:
         name: picalc-git
-    - name: built-image
-      resourceRef:
-        name: picalc-image
   params:
     - name: pathToYamlFile
       value: "knative/picalc.yaml"
+    - name: imageUrl
+      value: <REGISTRY>/<NAMESPACE>/picalc
     - name: imageTag
       value: "1.0"
   trigger:
@@ -305,13 +305,18 @@ While you could use `name` to assign a unique name to your PipelineRun each time
 
 * The Pipeline resource is identified under the `pipelineRef` key.
 
-* The resources required by the pipeline are bound to specific PipelineResources named `picalc-git` and `picalc-image`.
-We will define these in a moment.
+* The git resource required by the pipeline is bound to specific PipelineResources named `picalc-git`.
+We will define it in a moment.
 
 * Parameters exposed by the pipeline are set to specific values.
 
 * A service account named `pipeline-account` is specified to provide the credentials needed for the pipeline to run successfully.
 We will define this service account in the next part of the tutorial.
+
+You must edit this file to substitute the values of <REGISTRY> and <NAMESPACE> with the information for your private container registry.
+
+* To find the value for <REGISTRY>, enter the command `ibmcloud cr region`.
+* To find the value of <NAMESPACE>, enter the command `ibmcloud cr namespace-list`.
 
 Below is the Tekton PipelineResource for `picalc-git` which defines the git source.
 You can find this yaml file at [tekton/resources/picalc-git.yaml](tekton/resources/picalc-git.yaml).
@@ -333,34 +338,13 @@ spec:
 The source code for this example is a [go program that calculates an approximation of pi](src/picalc.go).
 The source includes a [Dockerfile](src/Dockerfile) which runs tests, compiles the code, and builds an image for execution.
 
-Below is the Tekton PipelineResource for `picalc-image` which defines the docker image.
-You can find this yaml file at [tekton/resources/picalc-image.yaml](tekton/resources/picalc-image.yaml).
-
-```
-apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
-metadata:
-  name: picalc-image
-spec:
-  type: image
-  params:
-    - name: url
-      description: The target URL
-      value: <REGISTRY>/<NAMESPACE>/picalc
-```
-
-You must edit this file before applying it to substitute the values of <REGISTRY> and <NAMESPACE> with the information for your private container registry.
-
-* To find the value for <REGISTRY>, enter the command `ibmcloud cr region`.
-* To find the value of <NAMESPACE>, enter the command `ibmcloud cr namespace-list`.
-
-Apply the two PipelineResource files to your cluster.
+You can apply the PipelineResource file to your cluster now.
 Do not apply the PipelineRun file yet because we still need to define the service account for it.
 
 ```
 kubectl apply -f tekton/pipeline/tekton/resources/picalc-git.yaml
-kubectl apply -f tekton/pipeline/tekton/resources/picalc-image.yaml
 ```
+
 
 ## Define a service account
 
@@ -464,96 +448,98 @@ As mentioned previously a given PipelineRun resource can run a pipeline only onc
 `kubectl` will respond with the generated name of the PipelineRun resource.
 
 ```
-pipelinerun.tekton.dev/picalc-pr-qhl5r created
+pipelinerun.tekton.dev/picalc-pr-db6p6 created
 ```
 
 You can check that status of the pipeline using the `kubectl describe` command:
 
 ```
-kubectl describe pipelinerun picalc-pr-qhl5r
+kubectl describe pipelinerun picalc-pr-db6p6
 ```
 
-If you enter the command relatively quickly after creating the PipelineRun, you are most likely to see output similar to this:
+If you enter the command relatively quickly after creating the PipelineRun, you may see output similar to this:
 
 ```
-Name:         picalc-pr-qhl5r
+Name:         picalc-pr-db6p6
 Namespace:    default
 Labels:       tekton.dev/pipeline=build-and-deploy-pipeline
 Annotations:  <none>
 API Version:  tekton.dev/v1alpha1
 Kind:         PipelineRun
 Metadata:
-  Creation Timestamp:  2019-04-12T19:53:27Z
+  Creation Timestamp:  2019-04-15T14:29:23Z
   Generate Name:       picalc-pr-
   Generation:          1
-  Resource Version:    3373283
-  Self Link:           /apis/tekton.dev/v1alpha1/namespaces/default/pipelineruns/picalc-pr-qhl5r
-  UID:                 a37dd088-5d5c-11e9-92d6-06ff308aa774
+  Resource Version:    3893390
+  Self Link:           /apis/tekton.dev/v1alpha1/namespaces/default/pipelineruns/picalc-pr-db6p6
+  UID:                 dd207211-5f8a-11e9-b66d-8eb09a9ab3eb
 Spec:
   Status:  
   Params:
     Name:   pathToYamlFile
     Value:  knative/picalc.yaml
+    Name:   imageUrl
+    Value:  registry.ng.bluemix.net/gdns3/picalc
     Name:   imageTag
-    Value:  1.0
+    Value:  1.3
   Pipeline Ref:
     Name:  build-and-deploy-pipeline
   Resources:
     Name:  git-source
     Resource Ref:
-      Name:  picalc-git
-    Name:    built-image
-    Resource Ref:
-      Name:         picalc-image
+      Name:         picalc-git
   Service Account:  pipeline-account
   Trigger:
     Type:  manual
 Status:
   Conditions:
-    Last Transition Time:  2019-04-12T19:53:27Z
+    Last Transition Time:  2019-04-15T14:29:23Z
     Message:               Not all Tasks in the Pipeline have finished executing
     Reason:                Running
     Status:                Unknown
     Type:                  Succeeded
-  Start Time:              2019-04-12T19:53:27Z
+  Start Time:              2019-04-15T14:29:23Z
   Task Runs:
-    Picalc - Pr - Qhl 5 R - Source - To - Image - Mfc 5 Z:
+    Picalc - Pr - Db 6 P 6 - Source - To - Image - Kczdb:
       Pipeline Task Name:  source-to-image
       Status:
         Conditions:
-          Last Transition Time:  2019-04-12T19:53:28Z
-          Message:               pod status "PodScheduled":"False"; message: "pod has unbound immediate PersistentVolumeClaims (repeated 2 times)"
-          Reason:                Pending
+          Last Transition Time:  2019-04-15T14:29:28Z
+          Reason:                Building
           Status:                Unknown
           Type:                  Succeeded
-        Pod Name:                picalc-pr-qhl5r-source-to-image-mfc5z-pod-666336
-        Start Time:              2019-04-12T19:53:27Z
-Events:                          <none>
-
+        Pod Name:                picalc-pr-db6p6-source-to-image-kczdb-pod-7b4e7c
+        Start Time:              2019-04-15T14:29:23Z
+        Steps:
+          Running:
+            Started At:  2019-04-15T14:29:26Z
+          Terminated:
+            Container ID:  containerd://b8f770e2b57d59c2bce76c63713d0b0a33f3fd02a14bad6b96978012060a436a
+            Exit Code:     0
+            Finished At:   2019-04-15T14:29:26Z
+            Reason:        Completed
+            Started At:    2019-04-15T14:29:26Z
+          Terminated:
+            Container ID:  containerd://a637b1cb5d83b1ad2aa0dbecd962bb70b0452900189f611e404c0c9515262443
+            Exit Code:     0
+            Finished At:   2019-04-15T14:29:26Z
+            Reason:        Completed
+            Started At:    2019-04-15T14:29:26Z
+Events:                    <none>
 ```
 
-Note the status message for the source-to-image task says 
-
-```
-pod status "PodScheduled":"False"; message: "pod has unbound immediate PersistentVolumeClaims (repeated 2 times)"
-```
-
-Each PipelineRun creates a PersistentVolumeClaim requesting a persistent volume.
-This volume is intended to be used to pass resources between tasks in the pipeline but the functionality is not fully implemented in Tekton at the time of this writing.
-The persistent volume is [dynamically provisioned by IBM Cloud](https://cloud.ibm.com/docs/containers?topic=containers-kube_concepts#dynamic_provisioning).
-This may take a minute or two.
-
-Continue to check the status.  If the pipeline runs successfully, the overall status should look like this:
+Note the status message which says `Not all Tasks in the Pipeline have finished executing`.
+Continue to rerun the command to check the status.  If the pipeline runs successfully, the overall status should look like this:
 
 ```
 Status:
   Conditions:
-    Last Transition Time:  2019-04-12T19:57:30Z
+    Last Transition Time:  2019-04-15T14:30:46Z
     Message:               All Tasks have completed executing
     Reason:                Succeeded
     Status:                True
     Type:                  Succeeded
-  Start Time:              2019-04-12T19:53:27Z
+  Start Time:              2019-04-15T14:29:23Z
 ```
 
 Check the status of the deployed Knative service.  It should be ready.
@@ -576,23 +562,34 @@ If the pipeline did not run successfully, the overall status may look like this:
 ```
 Status:
   Conditions:
-    Last Transition Time:  2019-04-12T19:57:30Z
-    Message:               TaskRun picalc-pr-qhl5r-deploy-to-cluster-7h8pm has failed
+    Last Transition Time:  2019-04-15T14:30:46Z
+    Message:               TaskRun picalc-pr-db6p6-deploy-to-cluster-7h8pm has failed
     Reason:                Failed
     Status:                False
     Type:                  Succeeded
-  Start Time:              2019-04-12T19:53:27Z
+  Start Time:              2019-04-15T14:29:23Z
 ```
 
 Under the task run status you should find a message that tells you how to get the logs from the failed build step.
 
 ```
-build step "build-step-deploy-using-kubectl" exited with code 1 (image: "docker.io/library/alpine@sha256:28ef97b8686a0b5399129e9b763d5b7e5ff03576aa5580d6f4182a49c5fe1913"); for logs run: kubectl -n default logs picalc-pr-qhl5r-deploy-to-cluster-7h8pm-pod-582c73 -c build-step-deploy-using-kubectl
+build step "build-step-deploy-using-kubectl" exited with code 1 (image: "docker.io/library/alpine@sha256:28ef97b8686a0b5399129e9b763d5b7e5ff03576aa5580d6f4182a49c5fe1913"); for logs run: kubectl -n default logs picalc-pr-db6p6-deploy-to-cluster-7h8pm-pod-582c73 -c build-step-deploy-using-kubectl
 ```
 
-You should delete both successful and failed PipelineRun resources when you are done with them to reclaim resources, especially the persistent volume associated with each one.
 
-```
-kubectl delete pipelinerun picalc-pr-qhl5r
-```
+## Tips
 
+Be careful when defining a PipelineResource as output from one task and input to another task.
+For example, in this tutorial an [image PipelineResource](https://github.com/tektoncd/pipeline/blob/master/docs/resources.md#image-resource) could have been used
+to define an output image from the source-to-image task and an input image to the deploy-using-kubectl task.
+This causes Tekton to [create a PersistentVolumeClaim for sharing data between tasks](https://github.com/tektoncd/pipeline/blob/master/docs/developers/README.md#how-are-resources-shared-between-tasks).
+This functionality is not completely implemented at the point of this writing so it was not used in the tutorial.
+
+
+## Summary
+
+Tekton provides simple, easy-to-learn features for constructing CI/CD pipelines that run on Kubernetes.
+This tutorial covered the basics to get you started building your own pipelines.
+There are more features available and many more planned for upcoming releases.
+
+You can check out our other Knative-related tutorials and blogs at https://developer.ibm.com/components/knative/
