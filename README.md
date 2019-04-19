@@ -85,7 +85,6 @@ spec:
         default: Dockerfile
       - name: imageUrl
         description: Url of image repository
-        default: "latest"
       - name: imageTag
         description: Tag to apply to the built image
         default: "latest"
@@ -146,7 +145,6 @@ spec:
         description: The path to the yaml file to deploy within the git source
       - name: imageUrl
         description: Url of image repository
-        default: "latest"
       - name: imageTag
         description: Tag of the images to be used.
         default: "latest"
