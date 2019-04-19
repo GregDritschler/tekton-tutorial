@@ -103,7 +103,8 @@ spec:
 A task can have one or more steps.  Each step defines an image to run to perform the function of the step.
 This task has one step that uses the [kaniko](https://github.com/GoogleContainerTools/kaniko) project to build a docker image from source and push it to a registry.
 
-The task requires an input resource of type `git-source` that defines where the source is located.
+The task requires an input resource of type `git` that defines where the source is located.
+The `git` source is cloned to a local volume at path `/workspace/git-source` where `git-source` comes from the name we gave to the resource.
 Note that a resource is simply an abstract argument to the task.
 We'll see later how it becomes bound to a PipelineResources which defines the actual resource to be used.
 This makes the task reusable with different git repositories.

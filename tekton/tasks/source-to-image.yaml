@@ -16,7 +16,6 @@ spec:
         default: Dockerfile
       - name: imageUrl
         description: Url of image repository
-        default: "latest"
       - name: imageTag
         description: Tag to apply to the built image
         default: "latest"
